@@ -1,1 +1,1 @@
-This Git repository contains the full code for every blog post written in [my personal website](https://wahnou.com/)
+This Git repository contains the full code for every blog post written on [my website](https://wahnou.com/)
