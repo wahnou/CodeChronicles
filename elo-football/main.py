@@ -35,51 +35,41 @@ def P(match, k):
 
 
 if __name__ == "__main__":
-    # You can download this dataset here: https://www.kaggle.com/datasets/patateriedata/all-international-football-results
-    matchs = pd.read_csv("datasets/2024_02_11/all_matches.csv")
-    countries_name = pd.read_csv("datasets/2024_02_11/countries_names.csv")
+    # You can download this dataset here: https://www.kaggle.com/datasets/martj42/international-football-results-from-1872-to-2017?select=results.csv
+    matchs = pd.read_csv("datasets/2024_02_15/results.csv")
 
-    # 1. Change countries name to their current ones:
-    name_mapping = dict(zip(countries_name['original_name'], countries_name['current_name']))
-    matchs['home_team'] = matchs['home_team'].map(name_mapping)
-    matchs['away_team'] = matchs['away_team'].map(name_mapping)
-
-    # 2. Set-up tournaments k value:
-    # 2.1 All tournaments get a default value of 30
+    # 1. Set-up tournaments k value:
+    # 1.1 All tournaments get a default value of 30
     tournaments = matchs['tournament'].unique()
     tournaments = {tournament: 30 for tournament in tournaments}
 
-    # 2.2 Init other tournaments:
+    # 1.2 Init other tournaments:
     confederation_tournaments=[
-        'Asian Cup',
-        'African Nations Cup',
+        'AFC Asian Cup',
+        'African Cup of Nations',
         'CONCACAF Championship',
-        'Copa America',
-        'European Championship',
-        'Oceania Nations Cup'
+        'Copa América',
+        'UEFA Euro',
+        'Oceania Nations Cup',
     ]
     
     for t in tournaments:
         if t in confederation_tournaments:
             tournaments[t] = 50 #Main tournaments k=50
-        elif ("World Cup" in t) or ("WC" in t):
-            tournaments[t] = 40 #World cup qualifiers k=40
-        elif (t.replace(' qualifier', '') in confederation_tournaments) or (t.replace(' qual', '') in confederation_tournaments):
+        elif (t.replace(' qualification', '') in confederation_tournaments):
             tournaments[t] = 40 #Main tournament qualifiers k=40
     
-    # 2.3 Special cases in the dataset:
-    tournaments['World Cup qualifier'] = 40
-    tournaments['World Cup'] = 60
+    # 1.3 Special cases in the dataset:
+    tournaments['FIFA World Cup qualification'] = 40
+    tournaments['FIFA World Cup'] = 60
     tournaments['Friendly'] = 20
-    tournaments["Mini World Cup"] = 30
-    tournaments["VIVA World Cup"] = 30
     
-    # 2.4 Creating a list of tuples (tournament, rating) and stored them in a tournaments.json file to check tournaments k values:
+    # 1.4 Creating a list of tuples (tournament, rating) and stored them in a tournaments.json file to check tournaments k values:
     sorted_tournaments = sorted(tournaments.items(), key=operator.itemgetter(1), reverse=True)
     with open("tournaments.json","w") as file:
         file.write(json.dumps(sorted_tournaments, indent=4))
 
-    # 3. Retriving all exsting teams and initiat all ranking at 1000
+    # 2. Retriving all exsting teams and initiat all ranking at 1000
     teams = pd.concat([matchs['home_team'], matchs['away_team']]).unique()
     teams = {team: 1000 for team in teams}
     
