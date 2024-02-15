@@ -1,6 +1,11 @@
 import pandas as pd
+from collections import defaultdict
+from datetime import datetime
+import matplotlib.pyplot as plt
+import json
+import operator
 
-#Formulas implementation:
+#Formulas:
 
 # The expected result:
 def We(match):
@@ -30,35 +35,83 @@ def P(match, k):
 
 
 if __name__ == "__main__":
-    matchs = pd.read_csv("int/results.csv")
+    # You can download this dataset here: https://www.kaggle.com/datasets/patateriedata/all-international-football-results
+    matchs = pd.read_csv("datasets/2024_02_11/all_matches.csv")
+    countries_name = pd.read_csv("datasets/2024_02_11/countries_names.csv")
 
-    # 1. Set-up tournaments k value:
-    # 1.1 All tournaments get a default value of 30
+    # 1. Change countries name to their current ones:
+    name_mapping = dict(zip(countries_name['original_name'], countries_name['current_name']))
+    matchs['home_team'] = matchs['home_team'].map(name_mapping)
+    matchs['away_team'] = matchs['away_team'].map(name_mapping)
+
+    # 2. Set-up tournaments k value:
+    # 2.1 All tournaments get a default value of 30
     tournaments = matchs['tournament'].unique()
     tournaments = {tournament: 30 for tournament in tournaments}
 
-    # 1.2 Main tournaments get specific values
-    tournaments['FIFA World Cup qualification'] = 40
-    tournaments['FIFA World Cup'] = 60
-    tournaments['Friendly'] = 20
-    confederation_tournaments=['AFC Asian Cup','African Cup of Nations','UEFA Euro','Copa América','CONCACAF Championship', 'Oceania Nations Cup']
+    # 2.2 Init other tournaments:
+    confederation_tournaments=[
+        'Asian Cup',
+        'African Nations Cup',
+        'CONCACAF Championship',
+        'Copa America',
+        'European Championship',
+        'Oceania Nations Cup'
+    ]
+    
     for t in tournaments:
         if t in confederation_tournaments:
-            tournaments[t] = 50
-        elif t.replace(' qualification', '') in confederation_tournaments:
-            tournaments[t] = 40
+            tournaments[t] = 50 #Main tournaments k=50
+        elif ("World Cup" in t) or ("WC" in t):
+            tournaments[t] = 40 #World cup qualifiers k=40
+        elif (t.replace(' qualifier', '') in confederation_tournaments) or (t.replace(' qual', '') in confederation_tournaments):
+            tournaments[t] = 40 #Main tournament qualifiers k=40
+    
+    # 2.3 Special cases in the dataset:
+    tournaments['World Cup qualifier'] = 40
+    tournaments['World Cup'] = 60
+    tournaments['Friendly'] = 20
+    tournaments["Mini World Cup"] = 30
+    tournaments["VIVA World Cup"] = 30
+    
+    # 2.4 Creating a list of tuples (tournament, rating) and stored them in a tournaments.json file to check tournaments k values:
+    sorted_tournaments = sorted(tournaments.items(), key=operator.itemgetter(1), reverse=True)
+    with open("tournaments.json","w") as file:
+        file.write(json.dumps(sorted_tournaments, indent=4))
 
-    # 2. Retriving all exsting teams with a starting ranking of 1000
+    # 3. Retriving all exsting teams and initiat all ranking at 1000
     teams = pd.concat([matchs['home_team'], matchs['away_team']]).unique()
     teams = {team: 1000 for team in teams}
-
-    # Apply Elo
+    
+    # Appling Elo
     for index, match in matchs.iterrows():
         var = P(match, tournaments[match['tournament']])
         teams[match['home_team']] += var
         teams[match['away_team']] -= var
 
-    i=1
-    for team, ranking in sorted(teams.items(), key=lambda x: x[1], reverse=True):
-        print(str(i)+' - '+team+' ('+str(ranking)+')')
-        i+=1
+    # Plot top teams:
+    top = 25
+    teams = dict(sorted(teams.items(), key=lambda x: x[1], reverse=True)[:top])
+    print(teams)
+
+    plt.figure(figsize=(8, 6))
+
+    # Plotting the bars
+    plt.barh(range(len(teams)), list(teams.values()), align='center', label='Rating')
+
+    # Adding labels to the bars
+    for i, (team, rating) in enumerate(teams.items()):
+        plt.text(i, rating + 1, str(rating), ha='center')
+
+    # Adding x-axis labels and rotating for better readability
+    plt.yticks(range(len(teams)), teams.keys(), rotation=45)
+    plt.ylabel('National teams')
+    plt.xlabel('Rating')
+    plt.title(f'Top {top} teams')
+    
+    plt.gca().invert_yaxis() 
+
+    # Displaying the plot
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
